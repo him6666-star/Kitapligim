@@ -1,0 +1,10 @@
+{
+  "name": "Rafİzi",
+  "description": "Kitaplık fotoğrafı ve barkod tarama ile kişisel kütüphane katalogu, raf konum bulucu ve okuma listesi.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
