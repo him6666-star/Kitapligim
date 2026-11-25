@@ -1,0 +1,289 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny all paths unless explicitly permitted below
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Hardened Global Primitives
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isVerifiedOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidNonEmptyString(val, maxLen) {
+      return val is string && val.size() >= 1 && val.size() <= maxLen;
+    }
+
+    function isValidOptionalString(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isValidPhotoUrl(url) {
+      return url is string
+        && url.size() <= 500
+        && (url.size() == 0 || url.matches('^https://.*') || url.matches('^/src/assets/.*'));
+    }
+
+    function isValidHexColor(color) {
+      return color is string
+        && color.size() >= 4
+        && color.size() <= 9
+        && color.matches('^#[0-9a-fA-F]{3,8}$');
+    }
+
+    function isValidBox2d(box) {
+      return box is list
+        && box.size() == 4
+        && box[0] is number && box[0] >= 0 && box[0] <= 1000
+        && box[1] is number && box[1] >= 0 && box[1] <= 1000
+        && box[2] is number && box[2] >= 0 && box[2] <= 1000
+        && box[3] is number && box[3] >= 0 && box[3] <= 1000;
+    }
+
+    // =========================================================================
+    // Validation Blueprints (Anti-Update-Gap Helpers)
+    // =========================================================================
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.uid is string
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && isValidId(data.uid)
+        && isValidNonEmptyString(data.displayName, 120)
+        && (!('photoURL' in data) || isValidPhotoUrl(data.photoURL))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBookcase(data, userId, bookcaseId) {
+      return data.keys().hasAll(['id', 'ownerId', 'name', 'room', 'shelfCount', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id', 'ownerId', 'name', 'room', 'shelfCount',
+          'photoUrl', 'photoUpdatedAt', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.id == bookcaseId
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && isValidNonEmptyString(data.name, 120)
+        && isValidNonEmptyString(data.room, 80)
+        && data.shelfCount is int
+        && data.shelfCount >= 1
+        && data.shelfCount <= 20
+        && (!('photoUrl' in data) || isValidPhotoUrl(data.photoUrl))
+        && isValidOptionalString(data, 'photoUpdatedAt', 40)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBook(data, userId, bookId) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'title', 'author', 'publisher', 'category',
+          'bookcaseId', 'shelfRow', 'positionInShelf', 'positionRegion',
+          'spineColor', 'readingStatus', 'currentPage', 'source',
+          'addedAt', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerId', 'title', 'author', 'publisher', 'category',
+          'isbn', 'pageCount', 'publishYear', 'description',
+          'bookcaseId', 'shelfRow', 'positionInShelf', 'positionRegion',
+          'spineColor', 'box2d', 'readingStatus', 'currentPage', 'rating',
+          'notes', 'source', 'addedAt', 'finishedAt', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.id == bookId
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && isValidNonEmptyString(data.title, 240)
+        && isValidNonEmptyString(data.author, 160)
+        && isValidNonEmptyString(data.publisher, 160)
+        && isValidNonEmptyString(data.category, 80)
+        && isValidOptionalString(data, 'isbn', 32)
+        && (!('pageCount' in data) || (data.pageCount is int && data.pageCount >= 0 && data.pageCount <= 10000))
+        && (!('publishYear' in data) || (data.publishYear is int && data.publishYear >= 1000 && data.publishYear <= 2100))
+        && isValidOptionalString(data, 'description', 2000)
+        && isValidId(data.bookcaseId)
+        && data.shelfRow is int
+        && data.shelfRow >= 1
+        && data.shelfRow <= 50
+        && data.positionInShelf is int
+        && data.positionInShelf >= 1
+        && data.positionInShelf <= 500
+        && data.positionRegion is string
+        && data.positionRegion in ['Sol', 'Orta', 'Sağ']
+        && isValidHexColor(data.spineColor)
+        && (!('box2d' in data) || isValidBox2d(data.box2d))
+        && data.readingStatus is string
+        && data.readingStatus in ['okunacak', 'okunuyor', 'okundu']
+        && data.currentPage is int
+        && data.currentPage >= 0
+        && data.currentPage <= 10000
+        && (!('rating' in data) || (data.rating is int && data.rating >= 1 && data.rating <= 5))
+        && isValidOptionalString(data, 'notes', 4000)
+        && data.source is string
+        && data.source in ['raf-fotografi', 'barkod', 'manuel']
+        && isValidNonEmptyString(data.addedAt, 40)
+        && isValidOptionalString(data, 'finishedAt', 40)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection Rules
+    // =========================================================================
+
+    // User profile root document (strictly owner-only; listing /users is denied)
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Update display name / avatar
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt'])
+        );
+
+      allow delete: if isVerifiedOwner(userId) && isValidId(userId);
+
+      // User's Bookcases subcollection
+      match /bookcases/{bookcaseId} {
+        allow get: if isOwner(userId)
+          && isValidId(userId)
+          && isValidId(bookcaseId)
+          && existing().ownerId == request.auth.uid;
+
+        allow list: if isOwner(userId)
+          && isValidId(userId)
+          && existing().ownerId == request.auth.uid;
+
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(bookcaseId)
+          && isValidBookcase(incoming(), userId, bookcaseId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && existsAfter(/databases/$(database)/documents/users/$(userId));
+
+        allow update: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(bookcaseId)
+          && isValidBookcase(incoming(), userId, bookcaseId)
+          && existing().ownerId == request.auth.uid
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && existsAfter(/databases/$(database)/documents/users/$(userId))
+          && (
+            // Action: Edit bookcase name, room, or shelf count
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'room', 'shelfCount', 'updatedAt']) ||
+            // Action: Update shelf reference photo and/or expand shelf count during scan
+            incoming().diff(existing()).affectedKeys().hasOnly(['shelfCount', 'photoUrl', 'photoUpdatedAt', 'updatedAt'])
+          );
+
+        allow delete: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(bookcaseId)
+          && existing().ownerId == request.auth.uid
+          && exists(/databases/$(database)/documents/users/$(userId));
+      }
+
+      // User's Books subcollection
+      match /books/{bookId} {
+        allow get: if isOwner(userId)
+          && isValidId(userId)
+          && isValidId(bookId)
+          && existing().ownerId == request.auth.uid;
+
+        allow list: if isOwner(userId)
+          && isValidId(userId)
+          && existing().ownerId == request.auth.uid;
+
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(bookId)
+          && isValidBook(incoming(), userId, bookId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && existsAfter(/databases/$(database)/documents/users/$(userId))
+          && existsAfter(/databases/$(database)/documents/users/$(userId)/bookcases/$(incoming().bookcaseId));
+
+        allow update: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(bookId)
+          && isValidBook(incoming(), userId, bookId)
+          && existing().ownerId == request.auth.uid
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().source == existing().source
+          && incoming().addedAt == existing().addedAt
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && existsAfter(/databases/$(database)/documents/users/$(userId))
+          && existsAfter(/databases/$(database)/documents/users/$(userId)/bookcases/$(incoming().bookcaseId))
+          && (
+            // Action: Update reading status, progress, rating, or notes
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'readingStatus', 'currentPage', 'rating', 'notes', 'finishedAt', 'updatedAt'
+            ]) ||
+            // Action: Edit full book metadata, shelf location, and reading state
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'author', 'publisher', 'category',
+              'isbn', 'pageCount', 'publishYear', 'description',
+              'bookcaseId', 'shelfRow', 'positionInShelf', 'positionRegion',
+              'spineColor', 'box2d', 'readingStatus', 'currentPage',
+              'rating', 'notes', 'finishedAt', 'updatedAt'
+            ])
+          );
+
+        allow delete: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(bookId)
+          && existing().ownerId == request.auth.uid
+          && exists(/databases/$(database)/documents/users/$(userId));
+      }
+    }
+  }
+}

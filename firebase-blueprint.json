@@ -1,0 +1,270 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile document anchoring a private personal library.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the library owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name shown in the header.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Optional Google account avatar HTTPS URL.",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the user profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the user profile was last updated."
+        }
+      },
+      "required": ["uid", "displayName", "createdAt", "updatedAt"]
+    },
+    "Bookcase": {
+      "title": "Bookcase",
+      "description": "A physical bookcase belonging to a user, with shelf row count and optional reference photo URL.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Bookcase document identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the bookcase owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the bookcase (e.g. Salon Kitaplığı).",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "room": {
+          "type": "string",
+          "description": "Room where the bookcase is located.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "shelfCount": {
+          "type": "integer",
+          "description": "Number of shelf rows in the bookcase (1 to 20)."
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "Optional static asset or HTTPS URL for bookcase reference photo.",
+          "maxLength": 500
+        },
+        "photoUpdatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional ISO timestamp when the shelf photo was updated.",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the bookcase was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the bookcase was last updated."
+        }
+      },
+      "required": ["id", "ownerId", "name", "room", "shelfCount", "createdAt", "updatedAt"]
+    },
+    "Book": {
+      "title": "Book",
+      "description": "A book record in the user's personal library, including shelf location and reading progress.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Book document identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the book owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Book title.",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "author": {
+          "type": "string",
+          "description": "Book author name.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "publisher": {
+          "type": "string",
+          "description": "Book publisher name.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "category": {
+          "type": "string",
+          "description": "Book category label.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "isbn": {
+          "type": "string",
+          "description": "Optional ISBN-10 or ISBN-13 string.",
+          "maxLength": 32
+        },
+        "pageCount": {
+          "type": "integer",
+          "description": "Optional total page count (0 to 10000)."
+        },
+        "publishYear": {
+          "type": "integer",
+          "description": "Optional publication year (1000 to 2100)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional short description or back-cover summary.",
+          "maxLength": 2000
+        },
+        "bookcaseId": {
+          "type": "string",
+          "description": "Reference to the parent Bookcase document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "shelfRow": {
+          "type": "integer",
+          "description": "1-indexed shelf row from top downward (1 to 50)."
+        },
+        "positionInShelf": {
+          "type": "integer",
+          "description": "1-indexed left-to-right position on the shelf (1 to 500)."
+        },
+        "positionRegion": {
+          "type": "string",
+          "description": "Horizontal region on the shelf.",
+          "enum": ["Sol", "Orta", "Sağ"]
+        },
+        "spineColor": {
+          "type": "string",
+          "description": "CSS color string representing the book spine color.",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "box2d": {
+          "type": "array",
+          "description": "Optional normalized [ymin, xmin, ymax, xmax] bounding box on 0..1000 scale."
+        },
+        "readingStatus": {
+          "type": "string",
+          "description": "Current reading status.",
+          "enum": ["okunacak", "okunuyor", "okundu"]
+        },
+        "currentPage": {
+          "type": "integer",
+          "description": "Current page read (0 to 10000)."
+        },
+        "rating": {
+          "type": "integer",
+          "description": "Optional personal rating from 1 to 5."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional personal reading notes.",
+          "maxLength": 4000
+        },
+        "source": {
+          "type": "string",
+          "description": "How the book was added.",
+          "enum": ["raf-fotografi", "barkod", "manuel"]
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp when the book was added.",
+          "maxLength": 40
+        },
+        "finishedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional ISO timestamp when the book was finished.",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the book document was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the book document was last updated."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "title",
+        "author",
+        "publisher",
+        "category",
+        "bookcaseId",
+        "shelfRow",
+        "positionInShelf",
+        "positionRegion",
+        "spineColor",
+        "readingStatus",
+        "currentPage",
+        "source",
+        "addedAt",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile root document, readable and writable only by its authenticated owner."
+    },
+    "/users/{userId}/bookcases/{bookcaseId}": {
+      "schema": { "$ref": "#/entities/Bookcase" },
+      "description": "Physical bookcases belonging to a specific user."
+    },
+    "/users/{userId}/books/{bookId}": {
+      "schema": { "$ref": "#/entities/Book" },
+      "description": "Personal library catalog and reading list entries belonging to a specific user."
+    }
+  }
+}
